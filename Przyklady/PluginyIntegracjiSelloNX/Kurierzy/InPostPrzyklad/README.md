@@ -15,7 +15,7 @@ Twórca rozwiązania jest dzięki temu zwolniony z konieczności tworzenia włas
 
 ## Opis przykładu
 
-Przykład przedstawia podstawową implementację plugina integracji z serwisem kurierskim dla Sello NX.
+Przykład przedstawia podstawową implementację pluginu integracji z serwisem kurierskim dla Sello NX.
 
  **Możliwości**
 
@@ -23,7 +23,9 @@ Przykład przedstawia podstawową implementację plugina integracji z serwisem k
 - Tworzenie przesyłki w systemie kuriera
 - Pobranie etykiety z systemu kuriera
 - Pobieranie statusu przesyłki z systemu kuriera
-- Tworzenie 
+- Tworzenie konta integracji, stempla identyfikującego kuriera, walidacja danych dostępowych do API kuriera
+- Udostępnianie usług kurierskich, usług dodatkowych w sposobie dostawy paczki w Sello NX
+
 
 
 ## Wymagania
