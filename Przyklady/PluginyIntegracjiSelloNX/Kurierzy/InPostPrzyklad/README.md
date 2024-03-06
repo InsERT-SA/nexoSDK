@@ -6,6 +6,8 @@ Copyright © InsERT S.A. 2024
 
 Uwaga! Aktualnie pluginy integracji Sello NX dla kurierów są dostępne w laboratorium nexo, co oznacza, że implementacja przedstawiona tutaj może różnić się od wersji finalnej. Wszelkie zmiany wprowadzane w kolejnych aktualizacja Sello NX mogą wymagać przebudowania pluginu, w tym konieczności dostosowania kodu do nowszej wersji.
 
+**W wersji 50 Sello NX zaszły zmiany łamiące w interfejsach pluginu kurierskiego w stosunku do wersji 48.**
+
 ## Opis pluginu
 
 Plugin kurierski umożliwia stworzenie integracji Sello NX z dowolnym serwisem kurierskim posiadającym własne API. Dzięki podejściu pluginowemu, użytkownik programu otrzymuje dostęp do możliwości pracy z kurierem (nadawanie przesyłek) w jednolity sposób, ze spójnym interfejsem, obsługą błędów, konfiguracją konta integracji (połączenia) w programie i zarządzania nim oraz wysyłkami.
@@ -30,7 +32,7 @@ Przykład przedstawia podstawową implementację pluginu integracji z serwisem k
 
 ## Wymagania
 
-- Sello NX 48.2
+- Sello NX 50
 
 ## Budowanie
 

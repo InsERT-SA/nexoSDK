@@ -1,9 +1,7 @@
 ﻿using InsERT.Moria.HandelElektroniczny;
 using InsERT.Moria.HandelElektroniczny.Rozszerzenia;
 using InsERT.Moria.HandelElektroniczny.Rozszerzenia.UI;
-using InsERT.Moria.ModelDanych;
 using InsERT.Mox.Formatting;
-using InsERT.Mox.ObiektyBiznesowe;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -45,59 +43,95 @@ namespace InPostPrzyklad
             // Plugin korzysta z wbudowanej obsługi autoryzacji typu basic, która eksponuje login i hasło
             if (sekcjaKonfiguracyjna is IBazoweUwierzytelnienieKonfiguracjaSekcjaWlasna basicAuth)
             {
-                // Na początek trzeba zweryfikować, czy cokolwiek jest wpisane w te pola
-                if (string.IsNullOrEmpty(basicAuth.Login.Wartosc))
-                    return DescriptiveBoolean.Error("Podanie loginu jest wymagane"); 
-
-                if (string.IsNullOrEmpty(basicAuth.Haslo.Wartosc))
-                    return DescriptiveBoolean.Error("Podanie hasła jest wymagane");
-
-                // wykonanie testowego żądania do serwisu pod jakiejkolwiek zasób wymagający (!) podania loginu i hasła
-                // np: https://dokumentacja-inpost.atlassian.net/wiki/spaces/PL/pages/11731073/Wyszukiwanie+i+sortowanie+przesy+ek
-                using (HttpClient validatorClient = new HttpClient())
-                {
-                    validatorClient.BaseAddress = new Uri(InPostPrzyklad.UriString);
-                    validatorClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                    validatorClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("pl-PL"));
-                    validatorClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", basicAuth.Haslo.Wartosc);
-
-                    var response = validatorClient.GetAsync($"/v1/organizations/{basicAuth.Login.Wartosc}/shipments").Result;
-
-                    // Sprawdzenie czy odpowiedź serrwera jest niepoprawna i zwrócenie odpowiedniej informacji
-                    if(!response.IsSuccessStatusCode)
-                    {
-                        if (response.StatusCode == HttpStatusCode.Unauthorized)
-                        {
-                            return DescriptiveBoolean.Error("Podane hasło jest niepoprawne");
-                        }
-                        else if(response.StatusCode == HttpStatusCode.Forbidden)
-                        {
-                            return DescriptiveBoolean.Error($"Brak uprawnień do dostępu do podanego konta: {basicAuth.Login.Wartosc}");
-                        }
-                        else
-                        {
-                            return DescriptiveBoolean.Error("Wystąpił błąd dostępu do serwisu");
-                        }
-                    }
-                    return DescriptiveBoolean.True;
-                }
-
+                return WalidujKonto(basicAuth.Login.Wartosc, basicAuth.Haslo.Wartosc);
             }
             return DescriptiveBoolean.Error("Wystąpił błąd przy weryfikacji konta. Spróbuj ponownie za chwilę");
         }
 
+        /// <summary>
+        /// Metoda pozwalająca na zweryfikowanie wprowadzanych danych przy zapisywaniu konta integracji z kurierem
+        /// Zadbaj o to, aby zapisywane konto było zawsze zweryfikowane w systemie kurierskim poprzez pobranie danych logowania wpisanych przez użytkownika
+        /// i weryfikację ich, np. przez wysłanie jakiegokolwiek zapytania do serwisu kurierskiego i sprawdzenie statusu odpowiedzi serwera.
+        /// </summary>
+        /// <param name="kontoIntegracji">Obiekt biznesowy konta integracji</param>
+        /// <returns>DescriptiveBool.true jeśli dane logowania są poprawne (zostały zweryfikowane), DescriptiveBool.Error(treść błędu)</returns>
+        public override DescriptiveBoolean WalidujZapisanieKontaIntegracji(IKontoIntegracji kontoIntegracji)
+        {
+            var login = kontoIntegracji.Dane.PodajPole(PolaIntegracjiSelloStale.NazwaKonta);
+            var haslo = kontoIntegracji.DeszyfrujPole(PolaIntegracjiSelloStale.KontaSprzedazy.Haslo);
+
+            return WalidujKonto(login, haslo);
+        }
+
+        /// <summary>
+        /// Metoda zwracająca operacje do wykonania po pierwszym zapisaniu konta integracji
+        /// </summary>
+        /// <param name="kontekstKonta">Kontekst konta integracji</param>
+        /// <returns>Operacje do wykonania po zapisaniu konta</returns>
         public override IEnumerable<OperacjaKontaIntegracji> PodajOperacjeDoWykonaniaPoPierwszymZapisaniuKonta(IKontekstKontaIntegracji kontekstKonta)
         {
             return Enumerable.Empty<OperacjaKontaIntegracji>();
         }
 
+        /// <summary>
+        ///     Obsługa sekcji własnych 
+        /// </summary>
         public override IObslugaSekcjiWlasnychUI SekcjeWlasneKontaIntegracji => null;
 
+        /// <summary>
+        /// Metoda zwracająca operacje do wykonania po zmianie ustawień konta integracji
+        /// </summary>
+        /// <param name="kontekstKonta">Kontekst konta integracji</param>
+        /// <returns>Operacje do wykonania po zmianie ustawień</returns>
         public override IEnumerable<OperacjaKontaIntegracji> PodajOperacjeWdrozeniaZmianUstawienKonta(IKontekstKontaIntegracji kontekstKonta)
         {
             return Enumerable.Empty<OperacjaKontaIntegracji>();
         }
 
+        /// <summary>
+        /// Metoda pomocnicza służaca walidacji konta w serwisie zewnętrznym
+        /// </summary>
+        /// <param name="login">Nazwa konta użytkownika</param>
+        /// <param name="haslo">Hasło konta integracji</param>
+        /// <returns></returns>
+        private DescriptiveBoolean WalidujKonto(string login, string haslo)
+        {
+            // Na początek trzeba zweryfikować, czy cokolwiek jest wpisane w te pola
+            if (string.IsNullOrEmpty(login))
+                return DescriptiveBoolean.Error("Podanie loginu jest wymagane");
 
+            if (string.IsNullOrEmpty(haslo))
+                return DescriptiveBoolean.Error("Podanie hasła jest wymagane");
+
+            // wykonanie testowego żądania do serwisu pod jakiejkolwiek zasób wymagający (!) podania loginu i hasła
+            // np: https://dokumentacja-inpost.atlassian.net/wiki/spaces/PL/pages/11731073/Wyszukiwanie+i+sortowanie+przesy+ek
+            using (HttpClient validatorClient = new HttpClient())
+            {
+                validatorClient.BaseAddress = new Uri(InPostPrzyklad.UriString);
+                validatorClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                validatorClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("pl-PL"));
+                validatorClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", haslo);
+
+                var response = validatorClient.GetAsync($"/v1/organizations/{login}/shipments").Result;
+
+                // Sprawdzenie czy odpowiedź serrwera jest niepoprawna i zwrócenie odpowiedniej informacji
+                if (!response.IsSuccessStatusCode)
+                {
+                    if (response.StatusCode == HttpStatusCode.Unauthorized)
+                    {
+                        return DescriptiveBoolean.Error("Podane hasło jest niepoprawne");
+                    }
+                    else if (response.StatusCode == HttpStatusCode.Forbidden)
+                    {
+                        return DescriptiveBoolean.Error($"Brak uprawnień do dostępu do podanego konta: {login}");
+                    }
+                    else
+                    {
+                        return DescriptiveBoolean.Error("Wystąpił błąd dostępu do serwisu");
+                    }
+                }
+                return DescriptiveBoolean.True;
+            }
+        }
     }
 }
