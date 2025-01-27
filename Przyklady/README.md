@@ -1,6 +1,6 @@
 # Przykłady rozszerzeń dla InsERT nexo.
 
-Copyright © InsERT S.A. 2024
+Copyright © InsERT S.A. 2025
 
 ## Wymagania
 

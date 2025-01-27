@@ -1,8 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <Konfiguracja StworzPakiet="Tak" StworzInstalator="Tak" 
               NazwaFolderuPakietu="Pakiet" NazwaFolderuInstalatora="Instalator"
-              LokalizacjaSdkBin="C:\nexo_sdk\nexoSDK_48.2.0.7101\Bin\"
-              LokalizacjaSdkNarzedzia="C:\nexo_sdk\nexoSDK_48.2.0.7101\Narzedzia\">
+              LokalizacjaSdkBin="..\..\..\..\..\..\Bin\"
+              LokalizacjaSdkNarzedzia="..\..\..\..\..\..\Narzedzia\">
   <!-- Znacznik umożliwia podanie lokalizacji pliku zawierającego dane wymagane do połączenia z serwerem SQL
   oraz zawierającego nazwy baz danych, w których ma zostać zainstalowany pakiet. Ścieżka ustawiona jest domyślnie
   do pliku ParamertyInstalacji.txt, który został automatycznie stworzony i dodany do projektu z szablonu.

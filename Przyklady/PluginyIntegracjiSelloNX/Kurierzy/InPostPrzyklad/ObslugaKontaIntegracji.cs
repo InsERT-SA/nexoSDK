@@ -1,5 +1,6 @@
 ﻿using InsERT.Moria.HandelElektroniczny;
 using InsERT.Moria.HandelElektroniczny.Rozszerzenia;
+using InsERT.Moria.HandelElektroniczny.Rozszerzenia.KontaIntegracji;
 using InsERT.Moria.HandelElektroniczny.Rozszerzenia.UI;
 using InsERT.Mox.Formatting;
 using System;
@@ -14,7 +15,7 @@ namespace InPostPrzyklad
     /// <summary>
     /// Klasa obsługi konta integracji, umożliwia walidację danych konta oraz dodatkową konfigurację wykraczającą poza domyślne możliwości jakie oferuje Sello NX
     /// </summary>
-    internal class ObslugaKontaIntegracji : ObslugaBazowaKontaIntegracji, IObslugaKontaIntegracji
+    internal class ObslugaKontaIntegracji : ObslugaBazowaKontaIntegracji, IObslugaKontaIntegracji, IObslugaKontaIntegracjiBasic
     {
         public override TypIntegracji TypIntegracji => TypIntegracji.DostawcyPaczek;
 

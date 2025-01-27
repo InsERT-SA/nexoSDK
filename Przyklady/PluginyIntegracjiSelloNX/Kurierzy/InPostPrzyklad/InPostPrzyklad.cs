@@ -12,12 +12,13 @@ using System.Net.Http.Headers;
 using InPostPrzyklad.DTO;
 using System.Linq;
 using InsERT.Moria.ModelDanych;
+using InsERT.Moria.HandelElektroniczny;
+using InsERT.Moria.Finanse;
 
 namespace InPostPrzyklad
 {
     public class InPostPrzyklad : IIntegracjaKuriera
     {
-        private readonly Lazy<ObslugaAutoryzacjiUI> _obslugaKonta;
         private readonly Lazy<ObslugaKontaIntegracji> _obslugaKontaIntegracji;
 
         /// <summary>
@@ -34,7 +35,6 @@ namespace InPostPrzyklad
 
         public InPostPrzyklad()
         {
-            _obslugaKonta = new Lazy<ObslugaAutoryzacjiUI>(() => new ObslugaAutoryzacjiUI());
             _obslugaKontaIntegracji = new Lazy<ObslugaKontaIntegracji>(() => new ObslugaKontaIntegracji());
             _httpClient = new HttpClient();
             _httpClient.BaseAddress = new Uri(UriString);
@@ -128,15 +128,27 @@ namespace InPostPrzyklad
         /// Poniżej wykorzystany własny typ 
         /// </summary>
         public DeklaracjaTypuObiektu KonfiguracjaSposobuDostawyPaczkiUI => new DeklaracjaTypuObiektu(IdyTypowWbudowanych.KonfiguracjaBazowaSposobuDostawyPaczkiKurierowUI);
-        /// <summary>
-        /// Ustawienie klasy obsługi autoryzacji do konta
-        /// </summary>
-        public IObslugaAutoryzacjiUI ObslugaAutoryzacjiUI => _obslugaKonta.Value;
-        /// <summary>
-        /// Obecnie nieużywane w pluginach zewnętrznych. Zwróć wartość false
-        /// </summary>
-        public bool RozszerzoneMapowanieDostawy => false;
 
+        //Interfejs zostanie usunięty w wersji 55.
+        //Należy skorzyć z rozszerzenia możliwości IObslugaKontaIntegracji.
+        public IObslugaAutoryzacjiUI ObslugaAutoryzacjiUI => throw new NotImplementedException("Interfejs zostanie usunięty w wersji 55");
+
+        //Parametr zostanie usunięty w wersji 55. Należy korzystać z MapowanieSposobuDostawyZUwzglednieniemKonta.
+        public bool RozszerzoneMapowanieDostawy => false;
+        /// <summary>
+        ///     Mapowanie sposobów dostawy z serwisu na sposoby dostawy paczki w Sello NX z uwzględnieniem konta sprzedażowego.
+        /// </summary>
+        ///<remarks>
+        ///     <para><see langword="true"/> jeżeli sposoby dostawy w serwisie zależą od konta sprzedaży (np. Allegro i Wysyłam z Allegro). W tym przypadku należy dodać pole <see cref="PolaIntegracjiSelloStale.KontaSprzedazy.IdUzytkownikaWSerwisie"/> w koncie sprzedaży internetowej oraz w koncie kuriera.<br/>
+        ///     <see langword="false"/> nie uwzględnia konta, domyślne zachowanie.</para>
+        ///</remarks>
+        public bool MapowanieSposobuDostawyZUwzglednieniemKonta => false;
+
+        /// <summary>
+        /// Lista obsługiwanych kurierów przez integrację.
+        /// W przypadku brokerów jak Wysyłam z Allegro zwraca listę wszystkich obsługiwanych kurierów (np. DPD, Allegro, DHL...)
+        /// </summary>
+        public List<string> Kurierzy => new List<string> { "InPost" };
 
         /// <summary>
         /// Metoda, której zadaniem jest zwrócenie listy usług dostawy oferowanych przez kuriera.
@@ -164,7 +176,7 @@ namespace InPostPrzyklad
             {
                 Id = "inpost_courier_standard",
                 Nazwa = "Przesyłka kurierska standardowa",
-
+                IdKuriera = "INPOST",
                 // Lista usług dodatkowych oferowanych dla danej usługi.
                 // Użytkownik programu będzie mógł zaznaczyć dowolne usługi dodatkowe z poniższej listy w postaci checkboxów.
                 // Są to takie usługi jak: dodatkowy SMS, e-mail, dostawa przed południem. itp.
@@ -262,36 +274,11 @@ namespace InPostPrzyklad
             };
         }
 
-        /// <summary>
-        /// Metoda, której zadaniem jest pobranie statusu przesyłki z serwisu kuriera.
-        /// </summary>
-        /// <param name="dane">Dane przekazane przez zadanie pobierania statusu wysyłki z Sello NX, 
-        /// na podstawie których plugin integracji może pobrać status wysyłki z serwisu kurierskiego.</param>
-        /// <returns>Status przesyłki w ustalonym formacie wynikowym</returns>
+        //Metoda zostanie usunięta w wersji 55.
+        //Należy korzystać z metody zwracającej typ PobranieStatusuWynik.
         public AktualizacjaStatusuWynik PobierzStatusWysylki(AktualizacjaStatusuDane dane)
         {
-            // Uzupełnienie danych autoryzujących w żądaniu do serwisu kurierskiego
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", dane.DaneUwierzytelnienia.TokenOdswiezeniaLubHaslo);
-
-            // Wywołanie endpointa w serwisie kurierskim, pod którym są dostępne dane paczki.
-            // Ważne! Wywołanie asynchroniczne GetAsync() jest tutaj zamienione na synchroniczne dzięki wywołaniu .Result
-            // Zadania w Sello NX są wykonywane w osobnych wątkach i należy tutaj wywoływać metody API i zwracać ich wyniki synchronicznie
-            var response = _httpClient.GetAsync($"/v1/shipments/{dane.IdentyfikatorPaczkiWSystemieKuriera}").Result;
-            var content = HandleErrorsWithContent<InpostShipmentDto>(response);
-
-            // Dane pobrane z serwisu, należy zapisać w strukturze wynikowej tego zadania. 
-            // W przykładzie używamy klasy dodatkowej StatusMapper, która definiuje mapowania statusów oraz opisów, dla czytelności kodu.
-            return new AktualizacjaStatusuWynik()
-            {
-                // Status z serwisu kuriera należy zmapować na jeden ze statusów dostępnych w Sello NX
-                // Statusy te są oznaczone różnymi atrybutami, które są wykorzystywane przez Sello NX do jednolitego prezentowania informacji w interfejsie
-                // ale też bazują na nich różne algorytmy, dostępne funkcje itp.
-                Status = StatusMapper.MapToApiStatus(content.Status, !string.IsNullOrEmpty(content.TrackingNumber)),
-
-                // Dodatkowy opis słowny danego statusu paczki, również wyświetlany w interfejsie użytkownika.
-                // Zalecamy stosowanie możliwie krótkich opisów, które wyjaśnią co dokładnie dzieje się z paczką.
-                StatusSlowny = StatusMapper.GetStatusDescription(content.Status),
-            };
+            throw new NotImplementedException("Metoda zostanie usunięta w wersji 55");
         }
 
         /// <summary>
@@ -309,7 +296,7 @@ namespace InPostPrzyklad
             // Wywołanie endpointa w serwisie kurierskim, pod którym jest dostępna etykieta przesyłki
             // Ważne! Wywołanie asynchroniczne GetAsync() jest tutaj zamienione na synchroniczne dzięki wywołaniu .Result
             // Zadania w Sello NX są wykonywane w osobnych wątkach i należy tutaj wywoływać metody API i zwracać ich wyniki synchronicznie
-            var response = _httpClient.GetAsync($"/v1/shipments/{dane.IdZewnetrznyPaczki}/label?format=pdf").Result;
+            var response = _httpClient.GetAsync($"/v1/shipments/{dane.IdentyfikatorPaczkiWSystemieKuriera}/label?format=pdf").Result;
 
             // Sprawdzenie odpowiedzi serwera kurierskiego i obsłużenie błędów 
             if (!response.IsSuccessStatusCode)
@@ -361,41 +348,11 @@ namespace InPostPrzyklad
             throw new NotImplementedException();
         }
 
-        /// <summary>
-        /// Metoda, której zadaniem jest pobranie statusów przesyłek z serwisu kuriera.
-        /// </summary>
-        /// <param name="dane">Dane przekazane przez zadanie pobierania statusów wysyłek z Sello NX, 
-        /// na podstawie których plugin integracji może pobrać statusy wysyłek z serwisu kurierskiego.</param>
-        /// <returns>Statusy przesyłek w ustalonym formacie wynikowym</returns>
+        //Metoda zostanie usunięta w wersji 55.
+        //Należy korzystać z metody zwracającej typ PobranieStatusowWysylekWynik.
         public AktualizacjaStatusowWynik PobierzStatusyWysylek(AktualizacjaStatusowDane dane)
         {
-            // Uzupełnienie danych autoryzujących w żądaniu do serwisu kurierskiego
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", dane.DaneUwierzytelnienia.TokenOdswiezeniaLubHaslo);
-
-            var listaStatusow = new List<AktualizacjaStatusuWynik>();
-
-            foreach (var id in dane.IdentyfikatoryPaczekWSystemieKuriera)
-            {
-                var response = _httpClient.GetAsync($"/v1/shipments/{dane.IdentyfikatoryPaczekWSystemieKuriera}").Result;
-                var content = HandleErrorsWithContent<InpostShipmentDto>(response);
-
-                listaStatusow.Add(new AktualizacjaStatusuWynik()
-                {
-                    // Status z serwisu kuriera należy zmapować na jeden ze statusów dostępnych w Sello NX
-                    // Statusy te są oznaczone różnymi atrybutami, które są wykorzystywane przez Sello NX do jednolitego prezentowania informacji w interfejsie
-                    // ale też bazują na nich różne algorytmy, dostępne funkcje itp.
-                    Status = StatusMapper.MapToApiStatus(content.Status, !string.IsNullOrEmpty(content.TrackingNumber)),
-
-                    // Dodatkowy opis słowny danego statusu paczki, również wyświetlany w interfejsie użytkownika.
-                    // Zalecamy stosowanie możliwie krótkich opisów, które wyjaśnią co dokładnie dzieje się z paczką.
-                    StatusSlowny = StatusMapper.GetStatusDescription(content.Status),
-                });
-            }
-
-            return new AktualizacjaStatusowWynik()
-            {
-                StatusyPaczek = listaStatusow
-            };
+            throw new NotImplementedException("Metoda zostanie usunięta w wersji 55");
         }
 
         /// <summary>
@@ -406,21 +363,28 @@ namespace InPostPrzyklad
         /// <returns>Informacja, czy przesyłka istnieje</returns>
         public WeryfikacjaIstnieniaPaczkiWynik WeryfikujIstnieniePaczki(WeryfikacjaIstnieniaPaczkiDane dane)
         {
-            var response = _httpClient.GetAsync($"/v1/shipments/{dane.IdentyfikatorPaczkiWSystemieKuriera}").Result;
-            var content = HandleErrorsWithContent<InpostShipmentDto>(response);
+            var weryfikacjaIstnieniaPaczkiWynik = new WeryfikacjaIstnieniaPaczkiWynik();
+            InpostShipmentDto content = null;
+            try
+            {
+                var response = _httpClient.GetAsync($"/v1/shipments/{dane.IdentyfikatorPaczkiWSystemieKuriera}").Result;
+                content = HandleErrorsWithContent<InpostShipmentDto>(response);
+            }
+            catch
+            {
+                weryfikacjaIstnieniaPaczkiWynik.CzyPaczkaIstnieje = false;
+            }
 
             if (content != null)
             {
-                return new WeryfikacjaIstnieniaPaczkiWynik()
-                {
-                    CzyPaczkaIstnieje = content.Status == "created"
-                };
+                weryfikacjaIstnieniaPaczkiWynik.CzyPaczkaIstnieje = content.Status == "created";
+            }
+            else
+            {
+                weryfikacjaIstnieniaPaczkiWynik.CzyPaczkaIstnieje = false;
             }
 
-            return new WeryfikacjaIstnieniaPaczkiWynik()
-            {
-                CzyPaczkaIstnieje = false
-            };
+            return weryfikacjaIstnieniaPaczkiWynik;
         }
 
         #endregion IIntegracjaKuriera
@@ -587,6 +551,118 @@ namespace InPostPrzyklad
             {
                 throw new InvalidOperationException("Problem z odczytem informacji z serwera.");
             }
+        }
+
+        /// <summary>
+        ///     Metoda wyznaczająca wartość ubezpieczenia.
+        /// </summary>
+        /// <param name="paczkaWysylkowa">Dane paczki wysyłkowej.</param>
+        /// <returns></returns>
+        public Kwota WyznaczWartoscUbezpieczenia(IPaczkaWysylkowa paczkaWysylkowa)
+        {
+            return new Kwota
+            {
+                Wartosc = paczkaWysylkowa.Dane.KwotaPobrania ?? 0m,
+                Waluta = paczkaWysylkowa.Dane.WalutaPobrania,
+            };
+        }
+
+        /// <summary>
+        /// Metoda, której zadaniem jest pobranie statusu przesyłki z serwisu kuriera.
+        /// </summary>
+        /// <param name="dane">Dane przekazane przez zadanie pobierania statusu wysyłki z Sello NX, 
+        /// na podstawie których plugin integracji może pobrać status wysyłki z serwisu kurierskiego.</param>
+        /// <returns>Status przesyłki w ustalonym formacie wynikowym</returns>
+        public PobranieStatusuWynik PobierzStatusWysylki(PobranieStatusuDane dane)
+        {
+            // Uzupełnienie danych autoryzujących w żądaniu do serwisu kurierskiego
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", dane.DaneUwierzytelnienia.TokenOdswiezeniaLubHaslo);
+
+            // Wywołanie endpointa w serwisie kurierskim, pod którym są dostępne dane paczki.
+            // Ważne! Wywołanie asynchroniczne GetAsync() jest tutaj zamienione na synchroniczne dzięki wywołaniu .Result
+            // Zadania w Sello NX są wykonywane w osobnych wątkach i należy tutaj wywoływać metody API i zwracać ich wyniki synchronicznie
+            var response = _httpClient.GetAsync($"/v1/shipments/{dane.IdentyfikatorPaczkiWSystemieKuriera}").Result;
+            var content = HandleErrorsWithContent<InpostShipmentDto>(response);
+
+            // Dane pobrane z serwisu, należy zapisać w strukturze wynikowej tego zadania. 
+            // W przykładzie używamy klasy dodatkowej StatusMapper, która definiuje mapowania statusów oraz opisów, dla czytelności kodu.
+            return new PobranieStatusuWynik()
+            {
+                // Status z serwisu kuriera należy zmapować na jeden ze statusów dostępnych w Sello NX
+                // Statusy te są oznaczone różnymi atrybutami, które są wykorzystywane przez Sello NX do jednolitego prezentowania informacji w interfejsie
+                // ale też bazują na nich różne algorytmy, dostępne funkcje itp.
+                Status = StatusMapper.MapToApiStatus(content.Status, !string.IsNullOrEmpty(content.TrackingNumber)),
+
+                // Dodatkowy opis słowny danego statusu paczki, również wyświetlany w interfejsie użytkownika.
+                // Zalecamy stosowanie możliwie krótkich opisów, które wyjaśnią co dokładnie dzieje się z paczką.
+                StatusSlowny = StatusMapper.GetStatusDescription(content.Status),
+            };
+        }
+
+        /// <summary>
+        /// Metoda, której zadaniem jest pobranie statusów przesyłek z serwisu kuriera.
+        /// </summary>
+        /// <param name="dane">Dane przekazane przez zadanie pobierania statusów wysyłek z Sello NX, 
+        /// na podstawie których plugin integracji może pobrać statusy wysyłek z serwisu kurierskiego.</param>
+        /// <returns>Statusy przesyłek w ustalonym formacie wynikowym</returns>
+        public PobranieStatusowWysylekWynik PobierzStatusyWysylek(PobranieStatusowWysylekDane dane)
+        {
+            // Uzupełnienie danych autoryzujących w żądaniu do serwisu kurierskiego
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", dane.DaneUwierzytelnienia.TokenOdswiezeniaLubHaslo);
+
+            var listaStatusow = new List<PobranieStatusuWynik>();
+
+            foreach (var id in dane.IdentyfikatoryPaczekWSystemieKuriera)
+            {
+                var response = _httpClient.GetAsync($"/v1/shipments/{id}").Result;
+                var content = HandleErrorsWithContent<InpostShipmentDto>(response);
+
+                listaStatusow.Add(new PobranieStatusuWynik()
+                {
+                    // Status z serwisu kuriera należy zmapować na jeden ze statusów dostępnych w Sello NX
+                    // Statusy te są oznaczone różnymi atrybutami, które są wykorzystywane przez Sello NX do jednolitego prezentowania informacji w interfejsie
+                    // ale też bazują na nich różne algorytmy, dostępne funkcje itp.
+                    Status = StatusMapper.MapToApiStatus(content.Status, !string.IsNullOrEmpty(content.TrackingNumber)),
+
+                    // Dodatkowy opis słowny danego statusu paczki, również wyświetlany w interfejsie użytkownika.
+                    // Zalecamy stosowanie możliwie krótkich opisów, które wyjaśnią co dokładnie dzieje się z paczką.
+                    StatusSlowny = StatusMapper.GetStatusDescription(content.Status),
+                });
+            }
+
+            return new PobranieStatusowWysylekWynik()
+            {
+                StatusyPaczek = listaStatusow
+            };
+        }
+
+        /// <summary>
+        ///     Link do wyszukiwarki punktów nadania.
+        ///     W przypadku brokerów jak WzA dodatkowo informacja o identyfikatorze kuriera.
+        /// </summary>
+        /// <param name="idKuriera">Identyfikator kuriera.</param>
+        /// <returns></returns>
+        public string LinkWyszukiwarkiPunktowNadania(string idKuriera)
+        {
+            return "https://inpost.pl/znajdz-paczkomat";
+        }
+
+        /// <summary>
+        ///     Link do wyszukiwarki punktów odbioru.
+        ///     W przypadku brokerów jak WzA dodatkowo informacja o identyfikatorze kuriera.
+        /// </summary>
+        /// <param name="idKuriera">Identyfikator kuriera.</param>
+        /// <returns></returns>
+        public string LinkWyszukiwarkiPunktowOdbioru(string idKuriera)
+        {
+            return "https://inpost.pl/znajdz-paczkomat";
+        }
+
+        //Metoda zostanie usunięta w wersji 55.
+        //Należy skorzystać z LinkWyszukiwarkiPunktowNadania oraz LinkWyszukiwarkiPunktowOdbioru.
+        public string LinkWyszukiwarkiPunktow(string idKuriera)
+        {
+            throw new NotImplementedException();
         }
 
         #endregion
