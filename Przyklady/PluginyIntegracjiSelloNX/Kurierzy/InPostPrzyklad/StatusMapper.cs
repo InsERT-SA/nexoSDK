@@ -1,9 +1,4 @@
 ﻿using InsERT.Moria.HandelElektroniczny.Rozszerzenia.Kurierzy;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace InPostPrzyklad
 {
@@ -11,7 +6,7 @@ namespace InPostPrzyklad
     /// Przykładowa klasa ułatwiająca mapowanie statusów kurierskich na statusy Sello NX oraz zwracająca zwięzłe nazwy tych statusów, 
     /// które Sello NX prezentuje użytkownikowi programu.
     /// </summary>
-    public class StatusMapper
+    public static class StatusMapper
     {
         public const string InPostCreated = "created";
         public const string InPostOffers_prepared = "offers_prepared";

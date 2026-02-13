@@ -4,8 +4,6 @@ using InsERT.Moria.HandelElektroniczny.Rozszerzenia.KontaIntegracji;
 using InsERT.Moria.HandelElektroniczny.Rozszerzenia.UI;
 using InsERT.Mox.Formatting;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -65,29 +63,9 @@ namespace InPostPrzyklad
         }
 
         /// <summary>
-        /// Metoda zwracająca operacje do wykonania po pierwszym zapisaniu konta integracji
-        /// </summary>
-        /// <param name="kontekstKonta">Kontekst konta integracji</param>
-        /// <returns>Operacje do wykonania po zapisaniu konta</returns>
-        public override IEnumerable<OperacjaKontaIntegracji> PodajOperacjeDoWykonaniaPoPierwszymZapisaniuKonta(IKontekstKontaIntegracji kontekstKonta)
-        {
-            return Enumerable.Empty<OperacjaKontaIntegracji>();
-        }
-
-        /// <summary>
         ///     Obsługa sekcji własnych 
         /// </summary>
         public override IObslugaSekcjiWlasnychUI SekcjeWlasneKontaIntegracji => null;
-
-        /// <summary>
-        /// Metoda zwracająca operacje do wykonania po zmianie ustawień konta integracji
-        /// </summary>
-        /// <param name="kontekstKonta">Kontekst konta integracji</param>
-        /// <returns>Operacje do wykonania po zmianie ustawień</returns>
-        public override IEnumerable<OperacjaKontaIntegracji> PodajOperacjeWdrozeniaZmianUstawienKonta(IKontekstKontaIntegracji kontekstKonta)
-        {
-            return Enumerable.Empty<OperacjaKontaIntegracji>();
-        }
 
         /// <summary>
         /// Metoda pomocnicza służaca walidacji konta w serwisie zewnętrznym

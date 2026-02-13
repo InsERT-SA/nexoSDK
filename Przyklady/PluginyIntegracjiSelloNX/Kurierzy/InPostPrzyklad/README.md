@@ -1,12 +1,6 @@
 # Przykładowy plugin integracji Sello NX z kurierem
 
-Copyright © InsERT S.A. 2025
-
-## Laboratorium
-
-Uwaga! Aktualnie pluginy integracji Sello NX dla kurierów są dostępne w laboratorium nexo, co oznacza, że implementacja przedstawiona tutaj może różnić się od wersji finalnej. Wszelkie zmiany wprowadzane w kolejnych aktualizacja Sello NX mogą wymagać przebudowania pluginu, w tym konieczności dostosowania kodu do nowszej wersji.
-
-**W wersji 53 Sello NX zaszły zmiany łamiące w interfejsach pluginu kurierskiego w stosunku do wersji poprzedniej.**
+Copyright © InsERT S.A. 2026
 
 ## Opis pluginu
 
@@ -19,20 +13,21 @@ Twórca rozwiązania jest dzięki temu zwolniony z konieczności tworzenia włas
 
 Przykład przedstawia podstawową implementację pluginu integracji z serwisem kurierskim dla Sello NX.
 
- **Możliwości**
+Tutorial opsujący tworzenia własnej integracji na podstawie tego przykładu dostępny jest [tutaj](../README.md).
+
+ **Możliwości integracji testowej**
 
 - Komunikacja z testowym środowiskiem serwisu InPost API ShipX
 - Tworzenie przesyłki w systemie kuriera
 - Pobranie etykiety z systemu kuriera
 - Pobieranie statusu przesyłki z systemu kuriera
-- Tworzenie konta integracji, stempla identyfikującego kuriera, walidacja danych dostępowych do API kuriera
+- Tworzenie konta integracji, etykietki identyfikującej kuriera, walidacja danych dostępowych do API kuriera
 - Udostępnianie usług kurierskich, usług dodatkowych w sposobie dostawy paczki w Sello NX
-
 
 
 ## Wymagania
 
-- Sello NX 53
+- Sello NX 59
 
 ## Budowanie
 
