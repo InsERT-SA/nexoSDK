@@ -355,13 +355,14 @@ namespace InPostPrzyklad
         }
 
         /// <summary>
-        ///     [Obsoloete] Metoda wyznaczająca wartość ubezpieczenia.
+        ///     Metoda wyznaczająca wartość ubezpieczenia.
         /// </summary>
         /// <param name="paczkaWysylkowa">Dane paczki wysyłkowej.</param>
         /// <returns></returns>
+        [Obsolete("Metoda wycofana. Skorzystaj z metody poniżej.")]
         public Kwota WyznaczWartoscUbezpieczenia(IPaczkaWysylkowa paczkaWysylkowa)
         {
-            throw new NotImplementedException("Zastąp własnym kodem");
+            throw new NotImplementedException("Metoda wycofana. Skorzystaj z metody poniżej.");
         }
 
         /// <summary>
@@ -459,7 +460,6 @@ namespace InPostPrzyklad
         /// </summary>
         /// <param name="dane"></param>
         /// <returns></returns>
-        /// <exception cref="NotImplementedException"></exception>
         public PobraniePropozycjiPodjazduKurieraWynik PobierzPropozycjiPodjazduKuriera(PobraniePropozycjiPodjazduKurieraDane dane)
         {
             var propozycjaPodjazduKuriera = new PobraniePropozycjiPodjazduKurieraWynik()
@@ -494,7 +494,7 @@ namespace InPostPrzyklad
         /// </summary>
         /// <param name="dane"></param>
         /// <returns></returns>
-        /// <exception cref="NotImplementedException"></exception>
+        /// exception cref="BladKomunikacjiZSerwisemException"></exception>
         public ZamowieniePodjazduKurieraWynik ZamowPodjazdKuriera(ZamowieniePodjazduKurieraDane dane)
         {
             var paczka = dane.IdentyfikatoryPaczekWSystemieKuriera.FirstOrDefault();
@@ -510,11 +510,9 @@ namespace InPostPrzyklad
             if (podmiot == null)
                 throw new BladKomunikacjiZSerwisemException("Nie znaleziono mojej firmy w podmiotach Sello. Spróbuj ponownie.");
 
-            var idNumeruTelefonu = sposobDostawyPaczki.PodajPole(PolaIntegracjiSelloStale.SposobyDostawy.IdNumeruTelefonu);
-            var telefon = podmiot.Kontakty.Where(k => k.Id == idNumeruTelefonu).Select(x => x.Wartosc).FirstOrDefault() ?? sposobDostawyPaczki.PodajPole(PolaIntegracjiSelloStale.SposobyDostawy.NumerTelefonu);
+            var telefon = sposobDostawyPaczki.PodajPole(PolaIntegracjiSelloStale.SposobyDostawy.NumerTelefonu);
 
-            var idAdresuEmail = sposobDostawyPaczki.PodajPole(PolaIntegracjiSelloStale.SposobyDostawy.IdAdresuEmail);
-            var email = podmiot.Kontakty.Where(k => k.Id == idAdresuEmail).Select(x => x.Wartosc).FirstOrDefault() ?? sposobDostawyPaczki.PodajPole(PolaIntegracjiSelloStale.SposobyDostawy.AdresEmail);
+            var email = sposobDostawyPaczki.PodajPole(PolaIntegracjiSelloStale.SposobyDostawy.AdresEmail);
 
             var idAdresu = sposobDostawyPaczki.PodajPole(PolaIntegracjiSelloStale.SposobyDostawy.IdAdresuNadawcy);
             var adresNadawcy = podmiot.Adresy.Where(x => x.Id == idAdresu).FirstOrDefault();
@@ -578,7 +576,6 @@ namespace InPostPrzyklad
         /// </summary>
         /// <param name="dane"></param>
         /// <returns></returns>
-        /// <exception cref="NotImplementedException"></exception>
         public PobranieStatusZamowieniaPodjazduWynik PobierzStatusZamowieniaPodjazdu(PobranieStatusZamowieniaPodjazduDane dane)
         {
             var listaWysylkowa = dane.Uchwyt.ListyWysylkowe().Znajdz(l => l.IdentyfikatorWewnetrznyZamowienia == dane.IdentyfikatorZamowieniePodjazdu)?.Dane;
@@ -624,7 +621,6 @@ namespace InPostPrzyklad
         /// </summary>
         /// <param name="dane"></param>
         /// <returns></returns>
-        /// <exception cref="NotImplementedException"></exception>
         public PobranieProtokoluWysylkiWynik PobierzProtokolWysylki(PobranieProtokoluWysylkiDane dane)
         {
             var response = _klientHttpSello.Get<byte[]>(Nazwa, $"/v1/organizations/{dane.DaneUwierzytelnienia.TokenDostepuLubLogin}/dispatch_orders/printouts?shipment_ids[]={string.Join("&shipment_ids[]=", dane.IdentyfikatoryPaczekWSystemieKuriera.Select(x => x))}", dane.KontekstKonta, authenticationHeader: new AuthenticationHeaderValue("Bearer", dane.DaneUwierzytelnienia.TokenOdswiezeniaLubHaslo), isBinaryData: true)
